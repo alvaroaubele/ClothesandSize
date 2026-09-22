@@ -25,6 +25,10 @@ site never places orders with any store.
 - `npm run lint`, `npm run typecheck`, `npm run test` (vitest), `npm run e2e`
   (Playwright, uses the pre-installed Chromium), `npm run build`.
 
+## Git
+- Work directly on `main`. No pull requests, no feature branches (owner's decision,
+  2026-09-22). Commit with a clear message and push `main`.
+
 ## Rules
 - Server Components by default; client components only where interaction needs it.
 - Prices in INR only.
