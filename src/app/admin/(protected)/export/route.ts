@@ -1,8 +1,8 @@
-import { PLAN_STATUSES } from "@/db/schema";
+import { budgetLabel, statusLabel } from "@/db/schema";
 import { isAdmin } from "@/lib/adminAuth";
 import { toCsv } from "@/lib/csv";
 import { formatMeasurement, sizesForGuest } from "@/lib/sizes";
-import { getAllGuests, getAllPlans, getEvents, getLooks, getStores } from "@/lib/queries";
+import { effectiveStatus, getAllGuests, getAllPlans, getEvents, getLooks, getStores } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,6 @@ export async function GET() {
   const [guests, plans, events, looks, stores] = await Promise.all([getAllGuests(), getAllPlans(), getEvents(), getLooks(), getStores()]);
   const lookById = new Map(looks.map((l) => [l.id, l]));
   const storeById = new Map(stores.map((s) => [s.id, s]));
-  const statusLabel = (v: string) => PLAN_STATUSES.find((s) => s.value === v)?.label ?? v;
 
   const header = [
     "guest_id",
@@ -21,6 +20,8 @@ export async function GET() {
     "country",
     "arrival_date",
     "wardrobe",
+    "answer",
+    "budget_band",
     "units",
     "chest_or_bust_cm",
     "waist_cm",
@@ -33,8 +34,8 @@ export async function GET() {
     "computed_sizes",
     "guest_notes",
     "event",
-    "status",
-    "chosen_looks",
+    "answer_for_event",
+    "looks_ticked",
     "event_notes",
     "registered_at",
   ];
@@ -61,6 +62,8 @@ export async function GET() {
       g.country,
       g.arrivalDate,
       g.wardrobe,
+      statusLabel(g.intent),
+      budgetLabel(g.budgetBand),
       g.units,
       g.chestCm,
       g.waistCm,
@@ -74,19 +77,15 @@ export async function GET() {
       g.notes,
     ];
     const gp = plans.filter((p) => p.guestId === g.id);
-    if (gp.length === 0) {
-      rows.push([...base, "", "", "", "", g.createdAt.toISOString()]);
-      continue;
-    }
+    // One row per guest × event, so the couple can pivot by event, answer and size.
     for (const ev of events) {
       const p = gp.find((x) => x.eventId === ev.id);
-      if (!p) continue;
-      const chosen = p.lookIds
+      const ticked = (p?.lookIds ?? [])
         .map((id) => lookById.get(id))
         .filter((l): l is NonNullable<typeof l> => !!l)
         .map((l) => `${storeById.get(l.storeId)?.name ?? ""} — ${l.title} (${l.url})`)
         .join(" | ");
-      rows.push([...base, ev.name, statusLabel(p.status), chosen, p.notes, g.createdAt.toISOString()]);
+      rows.push([...base, ev.name, statusLabel(effectiveStatus(g, p)), ticked, p?.notes ?? "", g.createdAt.toISOString()]);
     }
   }
 

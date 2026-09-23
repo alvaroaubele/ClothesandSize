@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { SIZE_CHARTS } from "@/lib/sizeCharts";
 import { getStores } from "@/lib/queries";
+
+export const metadata: Metadata = { title: "Stores in Mumbai — Shanai & Rhea" };
 
 export default async function StoresPage() {
   const stores = await getStores();

@@ -1,10 +1,16 @@
+import type { Metadata } from "next";
 import { deleteEvent, saveEvent } from "@/app/actions/admin";
+import ConfirmButton from "@/components/ConfirmButton";
 import type { Event } from "@/db/schema";
+import { requireAdmin } from "@/lib/adminAuth";
 import { getEvents } from "@/lib/queries";
+
+export const metadata: Metadata = { title: "Events — admin", robots: { index: false } };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
 export default async function AdminEventsPage({ searchParams }: Props) {
+  await requireAdmin();
   const [sp, events] = await Promise.all([searchParams, getEvents()]);
   return (
     <div className="space-y-6">
@@ -31,50 +37,51 @@ export default async function AdminEventsPage({ searchParams }: Props) {
 }
 
 function EventForm({ event }: { event?: Event }) {
+  const id = (f: string) => `${event ? `event-${event.id}` : "event-new"}-${f}`;
   return (
     <form action={saveEvent} className="card space-y-3">
       {event && <input type="hidden" name="id" value={event.id} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="label">Name</label>
-          <input name="name" className="field" defaultValue={event?.name ?? ""} required />
+          <label className="label" htmlFor={id("name")}>Name</label>
+          <input id={id("name")} name="name" className="field" defaultValue={event?.name ?? ""} required />
         </div>
         <div>
-          <label className="label">Date label</label>
-          <input name="dateLabel" className="field" defaultValue={event?.dateLabel ?? ""} placeholder="e.g. Friday 12 March 2027, 7 pm" />
+          <label className="label" htmlFor={id("dateLabel")}>Date label</label>
+          <input id={id("dateLabel")} name="dateLabel" className="field" defaultValue={event?.dateLabel ?? ""} placeholder="e.g. Friday 12 March 2027, 7 pm" />
         </div>
         <div>
-          <label className="label">Time of day</label>
-          <select name="timeOfDay" className="field" defaultValue={event?.timeOfDay ?? "evening"}>
+          <label className="label" htmlFor={id("timeOfDay")}>Time of day</label>
+          <select id={id("timeOfDay")} name="timeOfDay" className="field" defaultValue={event?.timeOfDay ?? "evening"}>
             <option value="day">Daytime</option>
             <option value="evening">Evening</option>
           </select>
         </div>
         <div>
-          <label className="label">Order</label>
-          <input name="sortOrder" type="number" className="field" defaultValue={event?.sortOrder ?? 0} />
+          <label className="label" htmlFor={id("sortOrder")}>Order</label>
+          <input id={id("sortOrder")} name="sortOrder" type="number" className="field" defaultValue={event?.sortOrder ?? 0} />
         </div>
       </div>
       <div>
-        <label className="label">Dress code</label>
-        <textarea name="dressCode" rows={2} className="field" defaultValue={event?.dressCode ?? ""} />
+        <label className="label" htmlFor={id("dressCode")}>Dress code</label>
+        <textarea id={id("dressCode")} name="dressCode" rows={2} className="field" defaultValue={event?.dressCode ?? ""} />
       </div>
       <div>
-        <label className="label">Palette</label>
-        <input name="palette" className="field" defaultValue={event?.palette ?? ""} />
+        <label className="label" htmlFor={id("palette")}>Palette</label>
+        <input id={id("palette")} name="palette" className="field" defaultValue={event?.palette ?? ""} />
       </div>
       <div>
-        <label className="label">Notes for guests</label>
-        <textarea name="notes" rows={2} className="field" defaultValue={event?.notes ?? ""} />
+        <label className="label" htmlFor={id("notes")}>Notes for guests</label>
+        <textarea id={id("notes")} name="notes" rows={2} className="field" defaultValue={event?.notes ?? ""} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn-primary">
           {event ? "Save" : "Add event"}
         </button>
         {event && (
-          <button type="submit" formAction={deleteEvent} className="btn-danger" name="id" value={event.id}>
+          <ConfirmButton type="submit" formAction={deleteEvent} className="btn-danger" name="id" value={event.id} message={`Delete the event "${event.name}" and every guest's answers for it?`}>
             Delete
-          </button>
+          </ConfirmButton>
         )}
       </div>
     </form>

@@ -13,15 +13,28 @@ import {
 export type Wardrobe = "menswear" | "womenswear";
 export type StoreWardrobe = Wardrobe | "both";
 export type TimeOfDay = "day" | "evening";
-export type PlanStatus = "undecided" | "interested" | "buy_myself" | "preorder_for_me";
+/** What the guest wants the couple to do. Asked once per guest; events may override. */
+export type PlanStatus = "preorder_for_me" | "buy_myself" | "undecided";
 export type Units = "cm" | "in";
+export type BudgetBand = "under_3k" | "3k_8k" | "8k_15k" | "15k_30k" | "over_30k";
 
-export const PLAN_STATUSES: { value: PlanStatus; label: string }[] = [
-  { value: "undecided", label: "Still deciding" },
-  { value: "interested", label: "Interested, want to see it first" },
-  { value: "buy_myself", label: "I will buy it myself in Mumbai" },
-  { value: "preorder_for_me", label: "Please reserve or pre-order this for me" },
+export const PLAN_STATUSES: { value: PlanStatus; label: string; short: string }[] = [
+  { value: "preorder_for_me", label: "Please reserve or buy it for me in Mumbai", short: "Reserve for me" },
+  { value: "buy_myself", label: "I will buy it myself in Mumbai", short: "Buying myself" },
+  { value: "undecided", label: "Still deciding, ask me later", short: "Still deciding" },
 ];
+
+export const BUDGET_BANDS: { value: BudgetBand; label: string }[] = [
+  { value: "under_3k", label: "Under ₹3,000 per outfit" },
+  { value: "3k_8k", label: "₹3,000 – ₹8,000" },
+  { value: "8k_15k", label: "₹8,000 – ₹15,000" },
+  { value: "15k_30k", label: "₹15,000 – ₹30,000" },
+  { value: "over_30k", label: "Over ₹30,000" },
+];
+
+export const statusLabel = (v: PlanStatus | null | undefined) => PLAN_STATUSES.find((s) => s.value === v)?.label ?? "Not answered";
+export const statusShort = (v: PlanStatus | null | undefined) => PLAN_STATUSES.find((s) => s.value === v)?.short ?? "Not answered";
+export const budgetLabel = (v: BudgetBand | null | undefined) => BUDGET_BANDS.find((b) => b.value === v)?.label ?? "";
 
 export type StoreLocation = {
   name: string;
@@ -93,6 +106,9 @@ export const guests = pgTable(
     country: text("country").notNull().default(""),
     arrivalDate: text("arrival_date").notNull().default(""),
     wardrobe: text("wardrobe").$type<Wardrobe>().notNull(),
+    /** Guest-level answer to "what should the couple do?"; null until the planner is saved once. */
+    intent: text("intent").$type<PlanStatus>(),
+    budgetBand: text("budget_band").$type<BudgetBand>(),
     units: text("units").$type<Units>().notNull().default("cm"),
     heightCm: real("height_cm"),
     chestCm: real("chest_cm").notNull(),
@@ -118,7 +134,8 @@ export const guestEventPlans = pgTable(
     eventId: integer("event_id")
       .notNull()
       .references(() => events.id, { onDelete: "cascade" }),
-    status: text("status").$type<PlanStatus>().notNull().default("undecided"),
+    /** Per-event override; null means "same as the guest's intent". */
+    status: text("status").$type<PlanStatus>(),
     lookIds: integer("look_ids").array().notNull().default([]),
     notes: text("notes").notNull().default(""),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

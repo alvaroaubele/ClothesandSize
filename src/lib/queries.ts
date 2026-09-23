@@ -1,7 +1,8 @@
 import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/db/client";
-import type { Event, Guest, GuestEventPlan, Look, Store } from "@/db/schema";
+import type { Event, Guest, GuestEventPlan, Look, PlanStatus, Store } from "@/db/schema";
+import { requireAdmin } from "./adminAuth";
 
 export async function getEvents(): Promise<Event[]> {
   const db = await getDb();
@@ -15,8 +16,7 @@ export async function getStores(): Promise<Store[]> {
 
 export async function getLooks(opts: { activeOnly?: boolean } = {}): Promise<Look[]> {
   const db = await getDb();
-  const q = db.select().from(schema.looks).orderBy(asc(schema.looks.sortOrder), asc(schema.looks.id));
-  const rows = await q;
+  const rows = await db.select().from(schema.looks).orderBy(asc(schema.looks.sortOrder), asc(schema.looks.id));
   return opts.activeOnly ? rows.filter((l) => l.active) : rows;
 }
 
@@ -32,12 +32,16 @@ export async function getPlansForGuest(guestId: number): Promise<GuestEventPlan[
   return db.select().from(schema.guestEventPlans).where(eq(schema.guestEventPlans.guestId, guestId));
 }
 
+/** Admin only. The check lives here so no page can list guests without it. */
 export async function getAllGuests(): Promise<Guest[]> {
+  await requireAdmin();
   const db = await getDb();
   return db.select().from(schema.guests).orderBy(asc(schema.guests.fullName), asc(schema.guests.id));
 }
 
+/** Admin only. */
 export async function getAllPlans(): Promise<GuestEventPlan[]> {
+  await requireAdmin();
   const db = await getDb();
   return db.select().from(schema.guestEventPlans);
 }
@@ -53,4 +57,9 @@ export function looksForEvent(looks: Look[], wardrobe: Guest["wardrobe"], eventS
   return looks.filter(
     (l) => l.active && l.wardrobe === wardrobe && (l.eventSlugs.length === 0 || l.eventSlugs.includes(eventSlug)),
   );
+}
+
+/** The status that applies to an event: the per-event override, else the guest's intent. */
+export function effectiveStatus(guest: Pick<Guest, "intent">, plan: Pick<GuestEventPlan, "status"> | undefined): PlanStatus | null {
+  return plan?.status ?? guest.intent ?? null;
 }

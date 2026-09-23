@@ -5,11 +5,17 @@ export default function NotFound() {
     <div className="mx-auto max-w-md space-y-4 text-center">
       <h1 className="text-3xl">That link doesn&apos;t work</h1>
       <p className="text-ink-soft">
-        Private planner links are unguessable, so a typo or a deleted record lands here. Register again to get a new link.
+        Private planner links are unguessable, so a typo, a regenerated link, or a deleted record lands here.
       </p>
-      <Link href="/register" className="btn-primary">
-        Enter my sizes
-      </Link>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Link href="/me" className="btn-primary">
+          Find my planner on this device
+        </Link>
+        <Link href="/register" className="btn-secondary">
+          Register again
+        </Link>
+      </div>
+      <p className="text-xs text-ink-soft">If you registered on another phone, ask the couple to send you your link.</p>
     </div>
   );
 }

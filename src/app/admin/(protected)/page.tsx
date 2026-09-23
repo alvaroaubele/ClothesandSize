@@ -1,14 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { deleteGuestAsAdmin } from "@/app/actions/admin";
-import { PLAN_STATUSES, type PlanStatus } from "@/db/schema";
+import ConfirmButton from "@/components/ConfirmButton";
+import { PLAN_STATUSES, budgetLabel, statusLabel, statusShort, type PlanStatus } from "@/db/schema";
+import { requireAdmin } from "@/lib/adminAuth";
 import { formatMeasurement, sizesForGuest } from "@/lib/sizes";
-import { getAllGuests, getAllPlans, getEvents, getLooks, getStores } from "@/lib/queries";
+import { effectiveStatus, getAllGuests, getAllPlans, getEvents, getLooks, getStores } from "@/lib/queries";
+
+export const metadata: Metadata = { title: "Guests — admin", robots: { index: false } };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
-const statusLabel = (s: PlanStatus) => PLAN_STATUSES.find((x) => x.value === s)?.label ?? s;
-
 export default async function AdminGuestsPage({ searchParams }: Props) {
+  await requireAdmin();
   const [sp, guests, plans, events, looks, stores] = await Promise.all([
     searchParams,
     getAllGuests(),
@@ -31,28 +35,36 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
     .filter((r) => !wardrobeFilter || r.guest.wardrobe === wardrobeFilter)
     .filter((r) => {
       if (!eventFilter && !statusFilter) return true;
-      return r.plans.some((p) => {
-        const ev = eventById.get(p.eventId);
-        return (!eventFilter || ev?.slug === eventFilter) && (!statusFilter || p.status === statusFilter);
+      return events.some((ev) => {
+        if (eventFilter && ev.slug !== eventFilter) return false;
+        const p = r.plans.find((x) => x.eventId === ev.id);
+        const s = effectiveStatus(r.guest, p);
+        return !statusFilter || s === statusFilter;
       });
     });
 
-  // Per-event summary: status counts and Fabindia size counts among guests who set a status.
+  // Per-event summary: effective status counts and brand-size counts among guests who answered.
   const summary = events.map((ev) => {
-    const evPlans = plans.filter((p) => p.eventId === ev.id);
     const byStatus = new Map<PlanStatus, number>();
     const bySize = new Map<string, number>();
-    for (const p of evPlans) {
-      byStatus.set(p.status, (byStatus.get(p.status) ?? 0) + 1);
-      const g = guests.find((x) => x.id === p.guestId);
-      if (!g) continue;
-      for (const s of sizesForGuest(stores, g)) {
-        const key = `${s.brand} ${s.label ?? "above chart"} (${g.wardrobe === "menswear" ? "M" : "W"})`;
-        bySize.set(key, (bySize.get(key) ?? 0) + 1);
+    let answered = 0;
+    for (const g of guests) {
+      const p = plansByGuest.get(g.id)?.find((x) => x.eventId === ev.id);
+      const s = effectiveStatus(g, p);
+      if (!s) continue;
+      answered++;
+      byStatus.set(s, (byStatus.get(s) ?? 0) + 1);
+      if (s === "preorder_for_me") {
+        for (const r of sizesForGuest(stores, g)) {
+          const key = `${r.brand} ${r.label ?? "above chart"} (${g.wardrobe === "menswear" ? "M" : "W"})`;
+          bySize.set(key, (bySize.get(key) ?? 0) + 1);
+        }
       }
     }
-    return { ev, total: evPlans.length, byStatus, bySize };
+    return { ev, answered, byStatus, bySize };
   });
+
+  const unanswered = guests.filter((g) => !g.intent).length;
 
   return (
     <div className="space-y-8">
@@ -60,7 +72,7 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
         <div>
           <h1 className="text-3xl">Guests</h1>
           <p className="text-sm text-ink-soft">
-            {guests.length} registered · {plans.length} event choices saved
+            {guests.length} registered · {guests.length - unanswered} answered · {unanswered} not yet answered
           </p>
         </div>
         <a href="/admin/export" className="btn-primary">
@@ -69,21 +81,21 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {summary.map(({ ev, total, byStatus, bySize }) => (
+        {summary.map(({ ev, answered, byStatus, bySize }) => (
           <div key={ev.id} className="card text-sm">
             <h3 className="text-base">{ev.name}</h3>
-            <p className="text-xs text-ink-soft">{total} guest(s) responded</p>
+            <p className="text-xs text-ink-soft">{answered} guest(s) answered</p>
             <ul className="mt-2 space-y-0.5">
               {PLAN_STATUSES.map((s) => (
                 <li key={s.value} className="flex justify-between gap-2">
-                  <span className="text-ink-soft">{s.label}</span>
+                  <span className="text-ink-soft">{s.short}</span>
                   <span className="font-semibold">{byStatus.get(s.value) ?? 0}</span>
                 </li>
               ))}
             </ul>
             {bySize.size > 0 && (
               <p className="mt-2 text-xs text-ink-soft">
-                Sizes: {[...bySize.entries()].map(([k, v]) => `${k} ×${v}`).join(" · ")}
+                Sizes to reserve: {[...bySize.entries()].map(([k, v]) => `${k} ×${v}`).join(" · ")}
               </p>
             )}
           </div>
@@ -106,13 +118,13 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
         </div>
         <div>
           <label className="label" htmlFor="status">
-            Status
+            Answer
           </label>
           <select id="status" name="status" className="field" defaultValue={statusFilter}>
             <option value="">Any</option>
             {PLAN_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {s.short}
               </option>
             ))}
           </select>
@@ -138,22 +150,23 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
       </form>
 
       <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <table className="table min-w-[1100px]" data-testid="guests-table">
+        <table className="table min-w-[1200px]" data-testid="guests-table">
           <thead>
             <tr>
               <th>Guest</th>
               <th>Wardrobe</th>
+              <th>Answer &amp; budget</th>
               <th>Measurements</th>
               <th>Computed sizes</th>
               <th>Known sizes / notes</th>
-              <th>Choices per event</th>
+              <th>Per event</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-ink-soft">
+                <td colSpan={8} className="py-8 text-center text-ink-soft">
                   No guests match.
                 </td>
               </tr>
@@ -168,6 +181,10 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
                   {g.arrivalDate && <div className="text-xs text-ink-soft">Arrives: {g.arrivalDate}</div>}
                 </td>
                 <td>{g.wardrobe === "menswear" ? "Menswear" : "Womenswear"}</td>
+                <td className="text-xs">
+                  <div className="font-semibold">{statusLabel(g.intent)}</div>
+                  {g.budgetBand && <div className="text-ink-soft">{budgetLabel(g.budgetBand)}</div>}
+                </td>
                 <td className="text-xs">
                   {g.wardrobe === "womenswear" ? "Bust" : "Chest"} {formatMeasurement(g.chestCm, g.units)}
                   <br />
@@ -208,13 +225,13 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
                   {g.notes && <div className="mt-1 text-ink-soft">{g.notes}</div>}
                 </td>
                 <td className="text-xs">
-                  {gp.length === 0 && <span className="text-ink-soft">No choices yet</span>}
-                  {events.map((ev) => {
-                    const p = gp.find((x) => x.eventId === ev.id);
-                    if (!p) return null;
+                  {gp.length === 0 && <span className="text-ink-soft">No event notes</span>}
+                  {gp.map((p) => {
+                    const ev = eventById.get(p.eventId);
+                    if (!ev || (!p.status && p.lookIds.length === 0 && !p.notes)) return null;
                     return (
-                      <div key={ev.id} className="mb-1">
-                        <span className="font-semibold">{ev.name}:</span> {statusLabel(p.status)}
+                      <div key={p.id} className="mb-1">
+                        <span className="font-semibold">{ev.name}:</span> {p.status ? statusShort(p.status) : "same as answer"}
                         {p.lookIds.length > 0 && (
                           <ul className="ml-3 list-disc">
                             {p.lookIds.map((id) => {
@@ -236,9 +253,9 @@ export default async function AdminGuestsPage({ searchParams }: Props) {
                 <td>
                   <form action={deleteGuestAsAdmin}>
                     <input type="hidden" name="id" value={g.id} />
-                    <button type="submit" className="text-xs text-rose underline">
+                    <ConfirmButton type="submit" className="text-xs text-rose underline" message={`Remove ${g.fullName} and all their answers? This cannot be undone.`}>
                       Remove
-                    </button>
+                    </ConfirmButton>
                   </form>
                 </td>
               </tr>

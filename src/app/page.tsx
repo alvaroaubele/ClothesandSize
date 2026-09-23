@@ -11,11 +11,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
       <section className="space-y-5">
         <p className="text-sm font-semibold uppercase tracking-widest text-saffron-deep">March 2027 · Rajasthan</p>
-        <h1 className="max-w-3xl text-4xl leading-tight sm:text-5xl">Get dressed for every night of Shanai &amp; Rhea&apos;s wedding.</h1>
+        <h1 className="max-w-3xl text-4xl leading-tight sm:text-5xl">Get dressed for every event of Shanai &amp; Rhea&apos;s wedding.</h1>
         <p className="max-w-2xl text-lg text-ink-soft">
-          Indian occasion wear is bought in Mumbai, not shipped abroad. Tell us your measurements once, pick a look for
-          each event, and the couple will help you reserve it before you arrive, or point you to the right store when you
-          land.
+          Indian occasion wear is bought in Mumbai, not shipped abroad. Tell us your measurements once and what you would
+          like the couple to do, and they will reserve or buy in Mumbai before you arrive, or point you to the right store
+          when you land.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/register" className="btn-primary">
@@ -30,8 +30,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <section className="grid gap-4 sm:grid-cols-3">
         {[
           ["1. Measure", "Chest or bust, waist, hip. Two minutes with a soft tape, in cm or inches."],
-          ["2. Pick a look", "For each event, choose from curated options at Mumbai stores with real price bands."],
-          ["3. The couple sorts it", "They see everyone's sizes and picks, reserve in Mumbai, or you shop yourself with a clear list."],
+          ["2. Tell the couple what to do", "Reserve for you, or you shop yourself in Mumbai. One answer, a rough budget, and any notes per event."],
+          ["3. The couple sorts it", "They see everyone's sizes and answers, buy or reserve in Mumbai, and message you before anything is bought."],
         ].map(([t, d]) => (
           <div key={t} className="card">
             <h3 className="text-lg">{t}</h3>

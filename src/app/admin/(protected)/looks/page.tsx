@@ -1,10 +1,16 @@
+import type { Metadata } from "next";
 import { deleteLook, saveLook } from "@/app/actions/admin";
+import ConfirmButton from "@/components/ConfirmButton";
 import type { Event, Look, Store } from "@/db/schema";
+import { requireAdmin } from "@/lib/adminAuth";
 import { getEvents, getLooks, getStores } from "@/lib/queries";
+
+export const metadata: Metadata = { title: "Looks — admin", robots: { index: false } };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
 export default async function AdminLooksPage({ searchParams }: Props) {
+  await requireAdmin();
   const [sp, looks, stores, events] = await Promise.all([searchParams, getLooks(), getStores(), getEvents()]);
   const storeById = new Map(stores.map((s) => [s.id, s]));
   return (
@@ -46,17 +52,18 @@ export default async function AdminLooksPage({ searchParams }: Props) {
 }
 
 function LookForm({ look, stores, events }: { look?: Look; stores: Store[]; events: Event[] }) {
+  const id = (f: string) => `${look ? `look-${look.id}` : "look-new"}-${f}`;
   return (
     <form action={saveLook} className="space-y-3">
       {look && <input type="hidden" name="id" value={look.id} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="label">Title</label>
-          <input name="title" className="field" defaultValue={look?.title ?? ""} required />
+          <label className="label" htmlFor={id("title")}>Title</label>
+          <input id={id("title")} name="title" className="field" defaultValue={look?.title ?? ""} required />
         </div>
         <div>
-          <label className="label">Store</label>
-          <select name="storeId" className="field" defaultValue={look?.storeId ?? stores[0]?.id}>
+          <label className="label" htmlFor={id("storeId")}>Store</label>
+          <select id={id("storeId")} name="storeId" className="field" defaultValue={look?.storeId ?? stores[0]?.id}>
             {stores.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -65,39 +72,39 @@ function LookForm({ look, stores, events }: { look?: Look; stores: Store[]; even
           </select>
         </div>
         <div>
-          <label className="label">Wardrobe</label>
-          <select name="wardrobe" className="field" defaultValue={look?.wardrobe ?? "womenswear"}>
+          <label className="label" htmlFor={id("wardrobe")}>Wardrobe</label>
+          <select id={id("wardrobe")} name="wardrobe" className="field" defaultValue={look?.wardrobe ?? "womenswear"}>
             <option value="menswear">Menswear</option>
             <option value="womenswear">Womenswear</option>
           </select>
         </div>
         <div>
-          <label className="label">Garment type</label>
-          <input name="garment" className="field" defaultValue={look?.garment ?? ""} placeholder="e.g. Lehenga" />
+          <label className="label" htmlFor={id("garment")}>Garment type</label>
+          <input id={id("garment")} name="garment" className="field" defaultValue={look?.garment ?? ""} placeholder="e.g. Lehenga" />
         </div>
         <div>
-          <label className="label">Link (category or product page)</label>
-          <input name="url" type="url" className="field" defaultValue={look?.url ?? ""} required />
+          <label className="label" htmlFor={id("url")}>Link (category or product page)</label>
+          <input id={id("url")} name="url" type="url" className="field" defaultValue={look?.url ?? ""} required />
         </div>
         <div>
-          <label className="label">Price from (₹)</label>
-          <input name="priceFromInr" type="number" className="field" defaultValue={look?.priceFromInr ?? ""} />
+          <label className="label" htmlFor={id("priceFromInr")}>Price from (₹)</label>
+          <input id={id("priceFromInr")} name="priceFromInr" type="number" className="field" defaultValue={look?.priceFromInr ?? ""} />
         </div>
         <div>
-          <label className="label">Price to (₹)</label>
-          <input name="priceToInr" type="number" className="field" defaultValue={look?.priceToInr ?? ""} />
+          <label className="label" htmlFor={id("priceToInr")}>Price to (₹)</label>
+          <input id={id("priceToInr")} name="priceToInr" type="number" className="field" defaultValue={look?.priceToInr ?? ""} />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Price note</label>
-          <input name="priceNote" className="field" defaultValue={look?.priceNote ?? ""} placeholder="Which product you checked and when" />
+          <label className="label" htmlFor={id("priceNote")}>Price note</label>
+          <input id={id("priceNote")} name="priceNote" className="field" defaultValue={look?.priceNote ?? ""} placeholder="Which product you checked and when" />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Notes for guests</label>
-          <textarea name="notes" rows={2} className="field" defaultValue={look?.notes ?? ""} />
+          <label className="label" htmlFor={id("notes")}>Notes for guests</label>
+          <textarea id={id("notes")} name="notes" rows={2} className="field" defaultValue={look?.notes ?? ""} />
         </div>
         <div>
-          <label className="label">Order</label>
-          <input name="sortOrder" type="number" className="field" defaultValue={look?.sortOrder ?? 0} />
+          <label className="label" htmlFor={id("sortOrder")}>Order</label>
+          <input id={id("sortOrder")} name="sortOrder" type="number" className="field" defaultValue={look?.sortOrder ?? 0} />
         </div>
         <div className="flex items-end">
           <label className="flex items-center gap-2 text-sm">
@@ -121,9 +128,9 @@ function LookForm({ look, stores, events }: { look?: Look; stores: Store[]; even
           {look ? "Save" : "Add look"}
         </button>
         {look && (
-          <button type="submit" formAction={deleteLook} className="btn-danger" name="id" value={look.id}>
+          <ConfirmButton type="submit" formAction={deleteLook} className="btn-danger" name="id" value={look.id} message={`Delete the look "${look.title}"?`}>
             Delete
-          </button>
+          </ConfirmButton>
         )}
       </div>
     </form>

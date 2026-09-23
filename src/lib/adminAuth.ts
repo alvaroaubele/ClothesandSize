@@ -1,12 +1,14 @@
 import "server-only";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const COOKIE = "wardrobe_admin";
 const DEV_PASSCODE = "shanai-rhea";
 
+/** Any production build counts, not only Vercel: a self-hosted deploy must not fall back to the dev passcode. */
 export function isProduction(): boolean {
-  return process.env.NODE_ENV === "production" && !!process.env.VERCEL;
+  return process.env.NODE_ENV === "production";
 }
 
 export function adminPasscode(): string | null {
@@ -25,12 +27,15 @@ function expectedCookieValue(): string {
   return createHmac("sha256", secret()).update("admin-session-v1").digest("base64url");
 }
 
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
 export function passcodeMatches(candidate: string): boolean {
   const expected = adminPasscode();
-  if (!expected) return false;
-  const a = Buffer.from(candidate);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return !!expected && safeEqual(candidate, expected);
 }
 
 export async function setAdminSession(): Promise<void> {
@@ -50,10 +55,17 @@ export async function clearAdminSession(): Promise<void> {
 }
 
 export async function isAdmin(): Promise<boolean> {
+  if (!adminPasscode()) return false;
   const jar = await cookies();
   const v = jar.get(COOKIE)?.value;
-  if (!v) return false;
-  const a = Buffer.from(v);
-  const b = Buffer.from(expectedCookieValue());
-  return a.length === b.length && timingSafeEqual(a, b);
+  return !!v && safeEqual(v, expectedCookieValue());
+}
+
+/**
+ * Call at the top of every admin page and inside every query that returns guest
+ * data. A layout-level check is not enough: Next renders the page in parallel
+ * with the layout, so a redirect there still streams the page body.
+ */
+export async function requireAdmin(): Promise<void> {
+  if (!(await isAdmin())) redirect("/admin/login");
 }

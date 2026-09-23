@@ -5,13 +5,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb, schema } from "@/db/client";
-import { clearAdminSession, isAdmin, passcodeMatches, setAdminSession } from "@/lib/adminAuth";
+import { clearAdminSession, passcodeMatches, requireAdmin, setAdminSession } from "@/lib/adminAuth";
 
 export type LoginState = { error?: string };
 
 export async function login(_prev: LoginState, fd: FormData): Promise<LoginState> {
   const passcode = String(fd.get("passcode") ?? "");
-  if (!passcodeMatches(passcode)) return { error: "That passcode is not right." };
+  if (!passcodeMatches(passcode)) {
+    // Slow down brute force; the passcode is the only admin secret.
+    await new Promise((r) => setTimeout(r, 500));
+    return { error: "That passcode is not right." };
+  }
   await setAdminSession();
   redirect("/admin");
 }
@@ -19,10 +23,6 @@ export async function login(_prev: LoginState, fd: FormData): Promise<LoginState
 export async function logout(): Promise<void> {
   await clearAdminSession();
   redirect("/admin/login");
-}
-
-async function requireAdmin() {
-  if (!(await isAdmin())) redirect("/admin/login");
 }
 
 const slugify = (s: string) =>

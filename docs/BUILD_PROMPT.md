@@ -3,6 +3,37 @@
 Designed with `prompt-architect-fable51` v3.2 on 2026-09-22. This file is the spec the
 build was executed against. Edit it here, not in chat, when the requirements change.
 
+## Revision 2026-09-23 (after the panel-of-experts review)
+
+Source: `docs/reviews/2026-09-23-panel-of-experts.md`. These supersede the matching
+parts of the original prompt below.
+
+- **Model change: the couple is the buyer.** Objective 3 no longer asks the guest to
+  choose outfits. The planner asks one required question per guest ("what should the
+  couple do?": reserve for me / I will buy it myself / still deciding) plus an
+  optional budget band, with an optional per-event override. Look cards remain as
+  reference with an optional "I'd like to see this" tick; a tick is a preference
+  signal, never a reservation. Saving is one action for the whole page.
+- **Security acceptance criterion added.** An unauthenticated request to any admin
+  route returns a redirect with no guest data in the body. Guest queries are gated
+  at the data layer (`requireAdmin()` inside `getAllGuests`/`getAllPlans`) and at the
+  top of every admin page. `ADMIN_PASSCODE` is mandatory whenever `NODE_ENV` is
+  production. The e2e suite asserts both.
+- **Return path.** The planner shows a persistent private-link card (copy, WhatsApp
+  to self, regenerate link). The device remembers the guest's token in a cookie so
+  the header's "My planner" link and `/me` find the planner again. Planner pages
+  are `noindex`; a `Referrer-Policy` header keeps tokens out of store sites' logs.
+- **Register form accessibility.** Radio groups are fieldsets with a visible focus
+  ring; errors are human sentences, associated to their controls, and summarised in
+  a focused alert; range and required checks report in one pass.
+- **Hygiene.** CSV cells that could be formulas are neutralised; both delete
+  actions confirm first; unpriced looks show a "Price to confirm" chip; store links
+  sit outside the checkbox label and say they open a new tab.
+
+Deferred until the first 20 responses: admin reservation view grouped by store,
+garment and size; respond-by dates; "days in Mumbai" and dependants; two-step
+registration; login rate limiting beyond the 500 ms delay; womenswear card content.
+
 Every externally checkable fact below was confirmed against a primary source on
 2026-09-22 unless marked `[verify]`. Sources are listed in `docs/SOURCES.md`.
 

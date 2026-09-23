@@ -16,14 +16,15 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    // localhost, not 127.0.0.1: Chromium accepts Secure cookies on localhost over http.
+    baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
   },
   projects: [{ name: "mobile-chromium", use: { ...devices["Pixel 7"], launchOptions } }],
   webServer: {
     // Fresh database per run; `npm run build` must have been run first.
     command: `rm -rf ${E2E_DATA_DIR} && PGLITE_DATA_DIR=${E2E_DATA_DIR} npx tsx scripts/db-setup.ts && PGLITE_DATA_DIR=${E2E_DATA_DIR} ADMIN_PASSCODE=e2e-pass npx next start -p ${PORT}`,
-    url: `http://127.0.0.1:${PORT}/`,
+    url: `http://localhost:${PORT}/`,
     reuseExistingServer: false,
     timeout: 120_000,
     stdout: "ignore",

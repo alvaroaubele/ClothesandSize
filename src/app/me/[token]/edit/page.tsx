@@ -1,9 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { updateGuest } from "@/app/actions/guest";
 import GuestForm from "@/components/GuestForm";
 import { getGuestByToken } from "@/lib/queries";
 import { cmToInches } from "@/lib/sizeEngine";
+
+export const metadata: Metadata = { title: "Edit my details — Shanai & Rhea", robots: { index: false } };
 
 export default async function EditGuestPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

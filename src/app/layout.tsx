@@ -23,8 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Shanai <span className="text-rose">&amp;</span> Rhea
             </Link>
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-              <Link href="/register" className="hover:text-saffron-deep">
-                Your sizes
+              <Link href="/me" className="hover:text-saffron-deep">
+                My planner
               </Link>
               <Link href="/stores" className="hover:text-saffron-deep">
                 Stores in Mumbai

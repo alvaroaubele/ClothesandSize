@@ -1,5 +1,15 @@
+/**
+ * Cells that start with =, +, -, @ or a control character are treated as
+ * formulas by Excel and Sheets. A guest could type one into any free-text
+ * field, so such cells get a leading apostrophe, which spreadsheets render as
+ * plain text.
+ */
+function neutralise(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
 function cell(v: unknown): string {
-  const s = v == null ? "" : String(v);
+  const s = neutralise(v == null ? "" : String(v));
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

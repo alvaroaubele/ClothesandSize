@@ -8,6 +8,7 @@
   --color-line: #e3d6c6;
   --color-saffron: #c9741d;
   --color-saffron-deep: #9e5710;
+  --color-saffron-darker: #7a420b;
   --color-rose: #b43a5b;
   --color-leaf: #3f6b45;
   --color-gold: #b8912f;
@@ -40,8 +41,12 @@ h3 {
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50;
   }
+  /* saffron-deep on white is 5.49:1; plain saffron was 3.50:1 and failed AA for 14px text. */
   .btn-primary {
-    @apply bg-saffron text-white hover:bg-saffron-deep;
+    @apply bg-saffron-deep text-white hover:bg-saffron-darker;
+  }
+  .choice {
+    @apply flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-sm has-[:checked]:border-saffron has-[:checked]:bg-saffron/10 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-saffron;
   }
   .btn-secondary {
     @apply border border-line bg-white text-ink hover:bg-paper-deep;
